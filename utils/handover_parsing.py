@@ -113,7 +113,7 @@ def parse_mi_ho(df, tz=8):
                 continue
             if (t_ - t).total_seconds() > look_after:
                 return None, None
-            if df[target].iloc[j] not in [0,'0'] and not np.isnan(df[target].iloc[j]):
+            if df[target].iloc[j] not in [0,'0'] and not pd.isnull(df[target].iloc[j]):
                 return t_, j
         return None, None
     
@@ -124,7 +124,7 @@ def parse_mi_ho(df, tz=8):
                 continue
             if (t - t_).total_seconds() > look_before:
                 return None, None
-            if df[target].iloc[j] not in [0,'0'] and not np.isnan(df[target].iloc[j]):
+            if df[target].iloc[j] not in [0,'0'] and not pd.isnull(df[target].iloc[j]):
                 return t_, j
         return None, None
     
@@ -135,7 +135,7 @@ def parse_mi_ho(df, tz=8):
                 continue
             if (t - t_).total_seconds() > look_before:
                 return None, None
-            if df[target].iloc[j] in [target_value] and not np.isnan(df[target].iloc[j]):
+            if df[target].iloc[j] in [target_value] and not pd.isnull(df[target].iloc[j]):
                 return t_, j
         return None, None
     
@@ -198,11 +198,11 @@ def parse_mi_ho(df, tz=8):
         others = ''
         t = df["Timestamp"].iloc[i]
 
-        if df["rrcConnectionRelease"].iloc[i] == 1:
+        if df["rrcConnectionRelease"].iloc[i] == '1':
             D['Conn_Rel'].append(HO(start=t))
             nr_pci = 'O'
 
-        if df["rrcConnectionRequest"].iloc[i] == 1:
+        if df["rrcConnectionRequest"].iloc[i] == '1':
             
             # Define end of rrcConnectionRequest to be rrcConnectionReconfigurationComplete or securityModeComplete.
             a = find_1st_after(i, 'rrcConnectionReconfigurationComplete',look_after=2)[0]
@@ -217,13 +217,13 @@ def parse_mi_ho(df, tz=8):
             D['Conn_Req'].append(HO(start=t,end=end,trans=trans))
             nr_pci = 'O'
         
-        if df["lte-rrc.t304"].iloc[i] == 1:
+        if df["lte-rrc.t304"].iloc[i] == '1':
             
             end, _ = find_1st_after(i, 'rrcConnectionReconfigurationComplete')
             serv_cell, target_cell = df["PCI"].iloc[i], int(df['lte_targetPhysCellId'].iloc[i])
             serv_freq, target_freq = int(df["Freq"].iloc[i]), int(df['dl-CarrierFreq'].iloc[i])
 
-            if df["SCellToAddMod-r10"].iloc[i] == 1:
+            if df["SCellToAddMod-r10"].iloc[i] == '1':
                 n =len(str(df["SCellIndex-r10.1"].iloc[i]).split('@'))
                 others += f' Set up {n} SCell.'
             else:
@@ -235,7 +235,7 @@ def parse_mi_ho(df, tz=8):
                 if a is not None:
                     others += " Near after RLF."
                 
-            if df["nr-rrc.t304"].iloc[i] == 1 and df["dualConnectivityPHR: setup (1)"].iloc[i] == 1:
+            if df["nr-rrc.t304"].iloc[i] == '1' and df["dualConnectivityPHR: setup (1)"].iloc[i] == '1':
                 
                 if serv_cell == target_cell and serv_freq == target_freq:
 
@@ -294,7 +294,7 @@ def parse_mi_ho(df, tz=8):
                         D['MN_HO_to_eNB'].append(HO(start=t, end=end, others=others, trans=trans))
 
 
-        if df["nr-rrc.t304"].iloc[i] == 1 and not df["dualConnectivityPHR: setup (1)"].iloc[i] == 1:
+        if df["nr-rrc.t304"].iloc[i] == '1' and not df["dualConnectivityPHR: setup (1)"].iloc[i] == '1':
 
             end, _ = find_1st_after(i,'rrcConnectionReconfigurationComplete')
         
@@ -306,7 +306,7 @@ def parse_mi_ho(df, tz=8):
             D['SN_HO'].append(HO(start=t,end=end,trans=trans))
 
 
-        if df["rrcConnectionReestablishmentRequest"].iloc[i] == 1:
+        if df["rrcConnectionReestablishmentRequest"].iloc[i] == '1':
 
             end1, _ = find_1st_after(i, 'rrcConnectionReestablishmentComplete', look_after=1)
             b, _ = find_1st_after(i, 'rrcConnectionReestablishmentReject', look_after=1)
@@ -356,7 +356,7 @@ def parse_mi_ho(df, tz=8):
                 D['RLF_II'].append(HO(start=t,others=others))
                 print('No end for RLF')
 
-        if df["scgFailureInformationNR-r15"].iloc[i] == 1:
+        if df["scgFailureInformationNR-r15"].iloc[i] == '1':
 
             others += ' ' + df["failureType-r15"].iloc[i] + '.'
             a, idx1 = find_1st_after(i, "rrcConnectionReestablishmentRequest", look_after=1)
@@ -403,7 +403,7 @@ def parse_mi_ho(df, tz=8):
                 others += ' No end.'
                 D['SCG_RLF'].append(HO(start=t,others=others))
         
-        if df['SCellToAddMod-r10'].iloc[i] == 1 and df['physCellId-r10'].iloc[i] != 'nr or cqi report':
+        if df['SCellToAddMod-r10'].iloc[i] == '1' and df['physCellId-r10'].iloc[i] != 'nr or cqi report':
 
             others = ''
             pcis = str(df["physCellId-r10"].iloc[i]).split('@')
