@@ -1,0 +1,14 @@
+# dummy_emu_host
+FROM python:3.10-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get -y upgrade 
+RUN apt install -y iperf3 iproute2 iputils-ping tmux wget git xz-utils sudo keyboard-configuration \
+build-essential python3-serial
+
+COPY requirements.txt /app/requirements.txt
+RUN pip3 install -r requirements.txt --break-system-packages && rm /app/requirements.txt
+RUN git clone https://github.com/qznwpfqbgw/mobileinsight-core.git
+RUN cd mobileinsight-core && ./install-ubuntu.sh
+
+CMD ['/bin/bash']

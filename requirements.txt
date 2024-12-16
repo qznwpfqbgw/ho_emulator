@@ -1,0 +1,4 @@
+swifter
+duckdb
+pandas
+numpy
