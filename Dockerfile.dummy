@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get -y upgrade 
 RUN apt install -y iperf3 iproute2 iputils-ping tmux wget git xz-utils sudo keyboard-configuration \
-build-essential python3-serial
+build-essential python3-serial socat
 
 COPY requirements.txt /app/requirements.txt
 RUN pip3 install -r requirements.txt --break-system-packages && rm /app/requirements.txt

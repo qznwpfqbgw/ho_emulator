@@ -13,7 +13,7 @@ class Log_Raw_Replayer:
     def add_subscriber_callback(self, callback):
         self.subscriber_callbacks.append(callback)
         
-    def set_waiting_time(self, waiting_time)
+    def set_waiting_time(self, waiting_time):
         self.waiting_time = waiting_time
         
     def get_start_time(self):
@@ -101,5 +101,7 @@ if __name__ == "__main__":
         '/home/fourcolor/Documents/ho_emulator/test/diag_log_sm01_2023-09-21_15-28-46.mi2log',
         True
     )
-    replayer.add_subscriber_callback(print)
+    import serial
+    ser = serial.Serial("/tmp/ttyV0")
+    replayer.add_subscriber_callback(ser.write)
     replayer.run()
