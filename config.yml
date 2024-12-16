@@ -1,0 +1,16 @@
+Global:
+  # One of mi2log and xml_log should be provided
+  # mi2lg should be provided if Controller.enable is True
+  mi2log: test/diag_log_sm01_2023-09-21_15-28-46.mi2log
+  xml_log: test/diag_log_sm01_2023-09-21_15-28-46.xml
+
+  # optional
+  db_log: test/2023-09-21_UDP_Bandlock_9S_Phone_Brown_sm01_#02.db
+
+Controller:
+  enable: True
+  parameters_file: test/br_dl_test_event_params.csv
+  inrerface: lo
+
+Replayer:
+  enable: True
