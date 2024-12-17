@@ -3,8 +3,8 @@
 # 名稱: manage_virtual_serial.sh
 # 功能: 用 tmux 管理虛擬串口對的創建與關閉
 # 用法: 
-#   ./manage_virtual_serial.sh start <session_name> <port_name_1> <port_name_2>
-#   ./manage_virtual_serial.sh stop <session_name>
+#   ./manage_virtual_serial.sh start
+#   ./manage_virtual_serial.sh stop
 
 ACTION=$1
 SESSION_NAME="ho_emu_tmux_sess"
