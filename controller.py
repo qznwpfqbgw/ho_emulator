@@ -10,7 +10,6 @@ class Controller:
     def __init__(self, event_params_file, db, interface):
         self.event_dict = create_event_params(event_params_file)
         event_df = get_event_through_db(db)
-        db.close()
         self.config_sched_df = self.calc_event_schedule(event_df)
         self.waiting_time = 0
         self.interface = interface

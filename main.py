@@ -72,6 +72,8 @@ if __name__ == "__main__":
             interface=config['Controller']['inrerface']
         )
         
+        db.close()
+        
     if config['Replayer']['enable'] and config['Controller']['enable']:
         controller_waiting_time = controller.config_sched_df['trigger'][0] - replayer.get_start_time()
         if controller_waiting_time < 0:
