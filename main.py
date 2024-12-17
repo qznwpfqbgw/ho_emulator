@@ -14,7 +14,8 @@ processes: list[multiprocessing.Process] = []
 
 def signal_handler(signum, frame):
     for p in processes:
-        p.terminate() 
+        if p.is_alive():
+            p.terminate() 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
@@ -22,10 +23,10 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTSTP, signal_handler)
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('config_file', default='config.yml', help="config file (yaml)")
-    parser.parse_args()
+    parser.add_argument('-c', '--config_file', default='config.yml', help="Config file (yaml)")
+    args = parser.parse_args()
     
-    with open(parser.config_file,'r') as f:
+    with open(args.config_file,'r') as f:
         config = yaml.safe_load(f)
         
     mi2log_file = None
@@ -62,6 +63,8 @@ if __name__ == "__main__":
             db = mi_xml.db
         else:
             db = duckdb.connect(db_file)
+        
+        parameters_file = config['Controller']['parameters_file']
             
         controller = Controller(
             event_params_file=parameters_file,

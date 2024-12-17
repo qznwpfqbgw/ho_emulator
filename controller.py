@@ -33,10 +33,10 @@ class Controller:
 
     def run(self):
         start_time = time.time()
-        start_log_time = controller.config_sched_df['trigger'][0]
+        start_log_time = self.config_sched_df['trigger'][0]
         for r in self.config_sched_df.itertuples():
             if (r.trigger - start_log_time + self.waiting_time) - (time.time() - start_time) > 0.05:
-                print((r.trigger - start_log_time + self.waiting_time) - (time.time() - start_time))
+                # print("controller",(r.trigger - start_log_time + self.waiting_time) - (time.time() - start_time))
                 time.sleep((r.trigger - start_log_time + self.waiting_time) - (time.time() - start_time))
             self.event_dict[r.type].set_effect_params(r.bin, self.interface)
 
