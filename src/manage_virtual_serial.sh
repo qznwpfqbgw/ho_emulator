@@ -37,7 +37,7 @@ start_session() {
     fi
 
     # 創建 tmux 會話並啟動 socat
-    tmux new-session -d -s "$SESSION_NAME" "socat -d -d pty,raw,echo=0,link=$PORT1 pty,raw,echo=0,link=$PORT2"
+    tmux new-session -d -s "$SESSION_NAME" "socat -d -d pty,raw,echo=0,mode=777,link=$PORT1 pty,raw,echo=0,mode=777,link=$PORT2"
     echo "Virtual serial ports created: $PORT1 <-> $PORT2 in tmux session '$SESSION_NAME'."
 }
 

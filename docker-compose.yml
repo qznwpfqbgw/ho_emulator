@@ -1,0 +1,9 @@
+services:
+  ho_emulator:
+    image: ghcr.io/qznwpfqbgw/ho_emu_server:quic
+    volumes:
+      - ./src:/app/ho_emulator
+      - /dev/pts:/dev/pts
+    privileged: true
+    command: /bin/bash
+    stdin_open: true

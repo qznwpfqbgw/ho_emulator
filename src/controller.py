@@ -1,6 +1,6 @@
 #%%
 from log_event_parser import parse_xml_to_db, get_event_through_db
-from event import create_event_params
+from event import create_event_params, Event
 import pandas as pd
 import duckdb
 import serial
@@ -8,7 +8,7 @@ from mobile_insight.monitor.dm_collector import dm_collector_c
 import time
 class Controller:
     def __init__(self, event_params_file, db, interface):
-        self.event_dict = create_event_params(event_params_file)
+        self.event_dict: dict[str: Event] = create_event_params(event_params_file)
         event_df = get_event_through_db(db)
         self.config_sched_df = self.calc_event_schedule(event_df)
         self.waiting_time = 0
@@ -18,7 +18,32 @@ class Controller:
         self.waiting_time = waiting_time
 
     def calc_event_schedule(self, event_df):
-        df = event_df[1:]
+        # df = event_df[1:]
+        print(event_df)
+        rows = []
+        for i in range(len(event_df)):
+            rows.append(event_df.iloc[i])
+            
+            # 當前事件結束時間
+            cur_event_impact_end = event_df.iloc[i]['start'] + pd.to_timedelta(
+                max(self.event_dict[event_df.iloc[i]['type']].impact_params.keys()), unit='s')
+            
+            # 穩定事件開始時間
+            stable_event_impact_start = cur_event_impact_end + pd.to_timedelta(0.1, unit='s')
+            # print(event_df.iloc[i]['start'], max(self.event_dict[event_df.iloc[i]['type']].impact_params.keys()), cur_event_impact_end, stable_event_impact_start)
+            # 下一個事件影響開始時間
+            next_event_impact_start = cur_event_impact_end + pd.to_timedelta(0.2, unit='s')
+            
+            if i + 1 < len(event_df):
+                next_event_impact_start = event_df.iloc[i + 1]['start'] + pd.to_timedelta(
+                    min(self.event_dict[event_df.iloc[i + 1]['type']].impact_params.keys()), unit='s')
+            
+            # 檢查是否符合插入條件
+            if stable_event_impact_start < next_event_impact_start and stable_event_impact_start > cur_event_impact_end:
+                rows.append(pd.Series({'type': "Stable", "start": stable_event_impact_start}, index=['type', 'start']))
+
+        # 生成新的 DataFrame
+        df = pd.DataFrame(rows)
         df['next_start'] = df['start'].shift(-1)
         df['next_type'] = df['type'].shift(-1)
         df['prev_start'] = df['start'].shift(1)
@@ -31,6 +56,7 @@ class Controller:
         return df
 
     def run(self):
+        self.event_dict['Stable'].set_effect_params(0.0, self.interface)
         start_time = time.time()
         start_log_time = self.config_sched_df['trigger'][0]
         for r in self.config_sched_df.itertuples():
@@ -62,14 +88,15 @@ class Controller:
 #%%
 if __name__ == "__main__":
     db = duckdb.connect(
-        '/home/fourcolor/Documents/ho_emulator/test/2023-09-21_UDP_Bandlock_9S_Phone_Brown_sm01_#02.db'
+        '/home/fourcolor/Documents/ho_emulator/src/test/2023-09-21_UDP_Bandlock_9S_Phone_Brown_sm01_#02.db'
     )
     controller = Controller(
-        '/home/fourcolor/Documents/ho_emulator/test/br_dl_test_event_params.csv',
+        '/home/fourcolor/Documents/ho_emulator/src/test/br_dl_test_event_params.csv',
         db,
         'lo'
     )
     #%%
     db.close()
+    #%%
     controller.run()
 # %%

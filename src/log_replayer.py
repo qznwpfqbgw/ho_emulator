@@ -88,6 +88,7 @@ class Log_Raw_Replayer:
                         # print(time.time() -  start_send_real_time, cur_log_time - start_log_time)
                         for callback in self.subscriber_callbacks:
                             callback(raw_data_to_send)
+                        # print(next((t for t in decoded if t[0] == "type_id"), None)[1],len(raw_data_to_send))
                         raw_data_to_send = b''
                     except FormatError as e:
                         print(("FormatError: ", e))
@@ -98,10 +99,10 @@ class Log_Raw_Replayer:
 
 if __name__ == "__main__":
     replayer = Log_Raw_Replayer(
-        '/home/fourcolor/Documents/ho_emulator/test/diag_log_sm01_2023-09-21_15-28-46.mi2log',
-        True
+        'test/diag_log_sm01_2023-09-21_15-28-46.mi2log',
+        False
     )
     import serial
-    ser = serial.Serial("/tmp/ttyV0")
+    ser = serial.Serial("/dev/pts/2")
     replayer.add_subscriber_callback(ser.write)
     replayer.run()
