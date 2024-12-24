@@ -87,7 +87,7 @@ class Log_Raw_Replayer:
                                 time.sleep((cur_log_time - start_log_time) - (time.time() - start_send_real_time))
                         # print(time.time() -  start_send_real_time, cur_log_time - start_log_time)
                         for callback in self.subscriber_callbacks:
-                            callback(raw_data_to_send)
+                            callback((raw_data_to_send, decoded))
                         # print(next((t for t in decoded if t[0] == "type_id"), None)[1],len(raw_data_to_send))
                         raw_data_to_send = b''
                     except FormatError as e:
@@ -95,14 +95,18 @@ class Log_Raw_Replayer:
             self._input_file.close()
         except Exception as e:
                 import traceback
+                traceback.print_exc()
                 sys.exit(str(traceback.format_exc()))
 
 if __name__ == "__main__":
     replayer = Log_Raw_Replayer(
         'test/diag_log_sm01_2023-09-21_15-28-46.mi2log',
-        False
+        True
     )
     import serial
     ser = serial.Serial("/dev/pts/2")
-    replayer.add_subscriber_callback(ser.write)
+    def callback(msg):
+        ser.write(msg[0])
+        # print(msg[1])
+    replayer.add_subscriber_callback(callback)
     replayer.run()
