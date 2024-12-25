@@ -2,6 +2,9 @@ from mobile_insight.monitor.dm_collector import dm_collector_c, DMLogPacket, For
 import time
 import sys
 import traceback
+import argparse
+from multiprocessing import Process
+
 class Log_Raw_Replayer:
     def __init__(self, mi2log, real_time) -> None:
         self.log_file_path = mi2log
@@ -99,14 +102,50 @@ class Log_Raw_Replayer:
                 sys.exit(-1)
 
 if __name__ == "__main__":
-    replayer = Log_Raw_Replayer(
+    replayer1 = Log_Raw_Replayer(
         'test/diag_log_sm01_2023-09-21_15-28-46.mi2log',
         True
     )
+
+    replayer2 = Log_Raw_Replayer(
+        'test/diag_log_sm00_2023-09-21_14-29-12.mi2log',
+        True
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--port", type=str, nargs='+', help="device: e.g. ttyV1 ttyV3")
+    args = parser.parse_args()
+
+    port1, port2 = args.port[0], args.port[1]
+
     import serial
-    ser = serial.Serial("/dev/pts/2")
-    def callback(msg):
-        ser.write(msg[0])
-        # print(msg[1].decode_xml())
-    replayer.add_subscriber_callback(callback)
-    replayer.run()
+    ser1 = serial.Serial("/tmp/" + port1)
+    ser2 = serial.Serial("/tmp/" + port2)
+
+    def callback1(msg):
+        ser1.write(msg[0])
+        
+    def callback2(msg):
+        ser2.write(msg[0])
+
+    replayer1.add_subscriber_callback(callback1)
+    replayer2.add_subscriber_callback(callback2)
+
+    # using multi-processing to run prediction model inference on both dual radios
+    p1 = Process(target=replayer1.run())     
+    p2 = Process(target=replayer2.run())
+    
+    p1.start()
+    p2.start()
+
+    try:
+        while True:
+            a = 1
+    except KeyboardInterrupt:
+        # Stop Record
+        print('Main process received KeyboardInterrupt')
+        p1.join()
+        p2.join()
+        time.sleep(1)
+        print("Process killed, closed.")
+        sys.exit()
