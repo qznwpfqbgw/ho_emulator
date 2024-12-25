@@ -1,7 +1,7 @@
 from mobile_insight.monitor.dm_collector import dm_collector_c, DMLogPacket, FormatError
 import time
 import sys
-
+import traceback
 class Log_Raw_Replayer:
     def __init__(self, mi2log, real_time) -> None:
         self.log_file_path = mi2log
@@ -40,8 +40,8 @@ class Log_Raw_Replayer:
                         self._input_file.close()
                         return result[1].timestamp()
                 except Exception as e:
-                        import traceback
-                        sys.exit(str(traceback.format_exc()))
+                    traceback.print_exc()
+                    sys.exit(-1)
                         
     def run(self):
         try:
@@ -87,16 +87,16 @@ class Log_Raw_Replayer:
                                 time.sleep((cur_log_time - start_log_time) - (time.time() - start_send_real_time))
                         # print(time.time() -  start_send_real_time, cur_log_time - start_log_time)
                         for callback in self.subscriber_callbacks:
-                            callback((raw_data_to_send, decoded))
+                            packet = DMLogPacket(decoded)
+                            callback((raw_data_to_send, packet))
                         # print(next((t for t in decoded if t[0] == "type_id"), None)[1],len(raw_data_to_send))
                         raw_data_to_send = b''
                     except FormatError as e:
                         print(("FormatError: ", e))
             self._input_file.close()
         except Exception as e:
-                import traceback
                 traceback.print_exc()
-                sys.exit(str(traceback.format_exc()))
+                sys.exit(-1)
 
 if __name__ == "__main__":
     replayer = Log_Raw_Replayer(
@@ -107,6 +107,6 @@ if __name__ == "__main__":
     ser = serial.Serial("/dev/pts/2")
     def callback(msg):
         ser.write(msg[0])
-        # print(msg[1])
+        # print(msg[1].decode_xml())
     replayer.add_subscriber_callback(callback)
     replayer.run()
