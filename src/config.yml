@@ -8,9 +8,10 @@ Global:
   db_log: test/2023-09-21_UDP_Bandlock_9S_Phone_Brown_sm01_#02.db
 
 Controller:
-  enable: False
+  enable: True
   parameters_file: test/br_dl_test_event_params.csv
-  inrerface: lo
+  inrerface: eth0
 
 Replayer:
   enable: True
+  virt_serial_port: /dev/pts/2

@@ -6,6 +6,7 @@ import duckdb
 import serial
 from mobile_insight.monitor.dm_collector import dm_collector_c
 import time
+import subprocess
 class Controller:
     def __init__(self, event_params_file, db, interface):
         self.event_dict: dict[str: Event] = create_event_params(event_params_file)
@@ -13,7 +14,29 @@ class Controller:
         self.config_sched_df = self.calc_event_schedule(event_df)
         self.waiting_time = 0
         self.interface = interface
-        
+        proc = subprocess.Popen(
+            [
+                "tc",
+                "qdisc",
+                "add",
+                "dev",
+                self.interface,
+                "root",
+                "netem",
+                "delay",
+                "0ms",
+                "loss",
+                "0%",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr = proc.communicate()
+        if stdout:
+            print(stdout)
+        if stderr:
+            print(stderr)
+
     def set_waiting_time(self, waiting_time):
         self.waiting_time = waiting_time
 
@@ -52,7 +75,8 @@ class Controller:
         df = df[(pd.isnull(df['overlap_limit_by_next']) | (df['trigger'] < df['overlap_limit_by_next']))]
         df = df[(pd.isnull(df['overlap_limit_by_prev']) | (df['trigger'] > df['overlap_limit_by_prev']))]
         df = df[['bin', 'type', 'trigger']].reset_index()
-        df['trigger'] = df['trigger'].apply(lambda x: x.timestamp() - 8 * 60 * 60)
+        # df['trigger'] = df['trigger'].apply(lambda x: x.timestamp() - 8 * 60 * 60)
+        df['trigger'] = df['trigger'].apply(lambda x: x.timestamp())
         return df
 
     def run(self):
@@ -88,12 +112,12 @@ class Controller:
 #%%
 if __name__ == "__main__":
     db = duckdb.connect(
-        '/home/fourcolor/Documents/ho_emulator/src/test/2023-09-21_UDP_Bandlock_9S_Phone_Brown_sm01_#02.db'
+        'test/2023-09-21_UDP_Bandlock_9S_Phone_Brown_sm01_#02.db'
     )
     controller = Controller(
-        '/home/fourcolor/Documents/ho_emulator/src/test/br_dl_test_event_params.csv',
+        'test/br_dl_test_event_params.csv',
         db,
-        'lo'
+        'eth0'
     )
     #%%
     db.close()

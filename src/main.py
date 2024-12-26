@@ -9,6 +9,7 @@ import os
 import duckdb
 import multiprocessing
 import signal
+from virtual_modem import Virtual_Modem
 #%%
 processes: list[multiprocessing.Process] = []
 
@@ -52,6 +53,9 @@ if __name__ == "__main__":
             mi2log=mi2log_file,
             real_time=True
         )
+        virt_modem = Virtual_Modem(config['Replayer']['virt_serial_port'])
+        replayer.add_subscriber_callback(virt_modem.replayer_callback)
+
     if config['Controller']['enable']:
         if db_file is None:
             mi_xml = mi_xml_db(
@@ -76,6 +80,7 @@ if __name__ == "__main__":
         
     if config['Replayer']['enable'] and config['Controller']['enable']:
         controller_waiting_time = controller.config_sched_df['trigger'][0] - replayer.get_start_time()
+        print(controller_waiting_time)
         if controller_waiting_time < 0:
             raise Exception("please make sure the db log and mi2log is the same source")
         controller.set_waiting_time(controller_waiting_time)
