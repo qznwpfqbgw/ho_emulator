@@ -3,12 +3,13 @@ import time
 import sys
 import traceback
 class Log_Raw_Replayer:
-    def __init__(self, mi2log, real_time) -> None:
+    def __init__(self, mi2log, real_time, offset_time = 0) -> None:
         self.log_file_path = mi2log
         self.real_time = real_time
         DMLogPacket.init({})
         self.subscriber_callbacks = []
         self.waiting_time = 0
+        self.offset_time = offset_time
         
     def add_subscriber_callback(self, callback):
         self.subscriber_callbacks.append(callback)
@@ -82,7 +83,10 @@ class Log_Raw_Replayer:
                             raise Exception("No tuple found with timestamp")
                         
                         if self.real_time:
-                            if (cur_log_time - start_log_time + self.waiting_time) - (time.time() - start_send_real_time) > 0.05:
+                            if (cur_log_time - start_log_time < self.offset_time):
+                                # raw_data_to_send = b''
+                                continue
+                            if (cur_log_time - start_log_time + self.waiting_time - self.offset_time) - (time.time() - start_send_real_time) > 0:
                                 # print("sleep:", (cur_log_time - start_log_time) - (time.time() - start_send_real_time), flush=True)
                                 time.sleep((cur_log_time - start_log_time) - (time.time() - start_send_real_time))
                         # print(time.time() -  start_send_real_time, cur_log_time - start_log_time)
@@ -100,11 +104,12 @@ class Log_Raw_Replayer:
 
 if __name__ == "__main__":
     replayer = Log_Raw_Replayer(
-        'test/diag_log_sm01_2023-09-21_15-28-46.mi2log',
-        True
+        'test/diag_log_sm00_2024-10-11_16-13-35.mi2log',
+        True,
+        0
     )
     import serial
-    ser = serial.Serial("/dev/pts/2")
+    ser = serial.Serial("/dev/pts/11")
     def callback(msg):
         ser.write(msg[0])
         # print(msg[1].decode_xml())

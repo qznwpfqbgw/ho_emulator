@@ -38,15 +38,13 @@ if __name__ == "__main__":
     controller = None
     if config['Global']['mi2log'] is not None and os.path.isfile(config['Global']['mi2log']):
         mi2log_file = config['Global']['mi2log']
-    if config['Global']['xml_log'] is not None and os.path.isfile(config['Global']['xml_log']):
+    if config['Global']['xml_log'] is not None:
         xml_log = config['Global']['xml_log']
-    if config['Global']['db_log'] is not None and os.path.isfile(config['Global']['db_log']):
+    if config['Global']['db_log'] is not None:
         db_file = config['Global']['db_log']    
 
     if xml_log is None and mi2log_file is None:
         raise Exception("One of mi2log and xml_log should be provided")
-    if xml_log is None:
-        mi2log_to_xml(mi2log_file, xml_log)
         
     if config['Replayer']['enable']:
         replayer = Log_Raw_Replayer(
@@ -57,10 +55,15 @@ if __name__ == "__main__":
         replayer.add_subscriber_callback(virt_modem.replayer_callback)
 
     if config['Controller']['enable']:
-        if db_file is None:
+        if db_file is None or xml_log is None:
+            raise Exception("Please provide db_log and xml_log name")
+            
+        if not os.path.isfile(config['Global']['xml_log']):
+            mi2log_to_xml(mi2log_file, xml_log)
+        if not os.path.isfile(config['Global']['db_log']):
             mi_xml = mi_xml_db(
                 xml_log,
-                None
+                db_file
             )
             mi_xml.filter = ["LTE_RRC_OTA_Packet", "5G_NR_RRC_OTA_Packet", "LTE_RRC_Serv_Cell_Info"]
             mi_xml.parse_to_db()

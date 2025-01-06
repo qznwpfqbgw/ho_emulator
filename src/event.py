@@ -72,6 +72,10 @@ def create_event_params(event_params_file):
     df.loc[(df["latency_mean"] < stable["latency_mean"]) & (df["bin"].abs() > 2) , "latency_mean"] = stable[
         "latency_mean"
     ]
+    # df.loc[(df["plr_mean"] < stable["plr_mean"]), "plr_mean"] = stable["plr_mean"]
+    # df.loc[(df["latency_mean"] < stable["latency_mean"]), "latency_mean"] = stable[
+    #     "latency_mean"
+    # ]
     for e in event_name_list:
         tmp = df[df["tag"] == e].sort_values(by="bin")
         if e == "Stable":
