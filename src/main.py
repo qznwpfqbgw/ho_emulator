@@ -67,6 +67,7 @@ if __name__ == "__main__":
             )
             mi_xml.filter = ["LTE_RRC_OTA_Packet", "5G_NR_RRC_OTA_Packet", "LTE_RRC_Serv_Cell_Info"]
             mi_xml.parse_to_db()
+            mi_xml.run_extension()
             db = mi_xml.db
         else:
             db = duckdb.connect(db_file)
@@ -76,7 +77,8 @@ if __name__ == "__main__":
         controller = Controller(
             event_params_file=parameters_file,
             db=db,
-            interface=config['Controller']['inrerface']
+            interface=config['Controller']['inrerface'],
+            perfect_stable=config['Controller']['perfect_stable']
         )
         
         db.close()

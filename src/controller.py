@@ -8,8 +8,8 @@ from mobile_insight.monitor.dm_collector import dm_collector_c
 import time
 import subprocess
 class Controller:
-    def __init__(self, event_params_file, db, interface):
-        self.event_dict: dict[str: Event] = create_event_params(event_params_file)
+    def __init__(self, event_params_file, db, interface, perfect_stable: bool = False):
+        self.event_dict: dict[str: Event] = create_event_params(event_params_file, perfect_stable)
         event_df = get_event_through_db(db)
         self.config_sched_df = self.calc_event_schedule(event_df)
         self.waiting_time = 0

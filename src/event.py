@@ -20,8 +20,22 @@ class Event:
         #         loss_rate=self.impact_params[time_slot]["plr_mean"]
         #     )
         # )
-        proc = subprocess.Popen(
-            [
+        if self.impact_params[time_slot]['latency_std_mean'] == 0:
+            cmds = [
+                "tc",
+                "qdisc",
+                "change",
+                "dev",
+                interface,
+                "root",
+                "netem",
+                "delay",
+                f"{self.impact_params[time_slot]['latency_mean']:.2f}ms",
+                "loss",
+                f"{self.impact_params[time_slot]['plr_mean']:.2f}%",
+            ]
+        else:
+            cmds = [
                 "tc",
                 "qdisc",
                 "change",
@@ -35,8 +49,11 @@ class Event:
                 "distribution",
                 f"{self.impact_params[time_slot]['distribution']}",
                 "loss",
-                f"{self.impact_params[time_slot]['plr_mean']:.2f}%",
-            ],
+                f"{self.impact_params[time_slot]['plr_mean']:.3f}%",
+            ]
+        print(' '.join(cmds))
+        proc = subprocess.Popen(
+            cmds,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -47,7 +64,7 @@ class Event:
             print(stderr)
 
 
-def create_event_params(event_params_file):
+def create_event_params(event_params_file, perfect_stable: bool = False):
     event_dict = {}
     event_name_list = [
         "ENBH",
@@ -79,9 +96,13 @@ def create_event_params(event_params_file):
     for e in event_name_list:
         tmp = df[df["tag"] == e].sort_values(by="bin")
         if e == "Stable":
-            tmp["distribution"] = "paretonormal"
+            if perfect_stable:
+                tmp["distribution"] = ""
+                tmp["latency_std_mean"] = 0
+            else:
+                tmp["distribution"] = "paretonormal"
         else:
-            tmp["distribution"] = "normal"
+            tmp["distribution"] = "paretonormal"
         impact_params = tmp.set_index("bin")[
             ["plr_mean", "latency_mean", "latency_std_mean", "distribution"]
         ].to_dict(orient="index")
