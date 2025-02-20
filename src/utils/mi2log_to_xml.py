@@ -13,3 +13,7 @@ def mi2log_to_xml(mi2log, out_file):
     dummper.save_decoded_msg_as(out_file)
     dummper.set_dump_type(MsgLogger.FILE_ONLY)
     replayer.run()
+
+if __name__ == '__main__':
+    test = '/home/fourcolor/Documents/ho_emulator/src/test/diag_log_sm00_2024-10-08_19-50-20.mi2log'
+    mi2log_to_xml(test, 'tmp.xml')  

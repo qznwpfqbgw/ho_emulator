@@ -1,5 +1,5 @@
-#%%
-from controller import Controller
+# %%
+from controller import *
 from log_replayer import Log_Raw_Replayer
 from preprocessing import mi_xml_db
 from utils.mi2log_to_xml import mi2log_to_xml
@@ -10,95 +10,122 @@ import duckdb
 import multiprocessing
 import signal
 from virtual_modem import Virtual_Modem
-#%%
+
+# %%
 processes: list[multiprocessing.Process] = []
+
 
 def signal_handler(signum, frame):
     for p in processes:
         if p.is_alive():
-            p.terminate() 
+            p.terminate()
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGTSTP, signal_handler)
-    
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config_file', default='config.yml', help="Config file (yaml)")
+    parser.add_argument(
+        "-c", "--config_file", default="config.yml", help="Config file (yaml)"
+    )
     args = parser.parse_args()
-    
-    with open(args.config_file,'r') as f:
+
+    with open(args.config_file, "r") as f:
         config = yaml.safe_load(f)
-        
+
     mi2log_file = None
     db_file = None
     parameters_file = None
     xml_log = None
     replayer = None
     controller = None
-    if config['Global']['mi2log'] is not None and os.path.isfile(config['Global']['mi2log']):
-        mi2log_file = config['Global']['mi2log']
-    if config['Global']['xml_log'] is not None:
-        xml_log = config['Global']['xml_log']
-    if config['Global']['db_log'] is not None:
-        db_file = config['Global']['db_log']    
+    if config["Global"]["mi2log"] is not None and os.path.isfile(
+        config["Global"]["mi2log"]
+    ):
+        mi2log_file = config["Global"]["mi2log"]
+    if config["Global"]["xml_log"] is not None:
+        xml_log = config["Global"]["xml_log"]
+    if config["Global"]["db_log"] is not None:
+        db_file = config["Global"]["db_log"]
 
     if xml_log is None and mi2log_file is None:
         raise Exception("One of mi2log and xml_log should be provided")
-        
-    if config['Replayer']['enable']:
-        replayer = Log_Raw_Replayer(
-            mi2log=mi2log_file,
-            real_time=True
-        )
-        virt_modem = Virtual_Modem(config['Replayer']['virt_serial_port'])
+
+    if config["Replayer"]["enable"]:
+        replayer = Log_Raw_Replayer(mi2log=mi2log_file, real_time=True)
+        virt_modem = Virtual_Modem(config["Replayer"]["virt_serial_port"])
         replayer.add_subscriber_callback(virt_modem.replayer_callback)
 
-    if config['Controller']['enable']:
+    if (
+        config["DL_Profile_Based_Controller"]["enable"]
+        and config["DL_Playback_Controller"]["enable"]
+    ):
+        raise Exception(
+            "Currently not support use DL_Profile_Based_Controller and DL_Playback_Controller at the same time"
+        )
+    elif config["DL_Profile_Based_Controller"]["enable"]:
         if db_file is None or xml_log is None:
             raise Exception("Please provide db_log and xml_log name")
-            
-        if not os.path.isfile(config['Global']['xml_log']):
+
+        if not os.path.isfile(config["Global"]["xml_log"]):
             mi2log_to_xml(mi2log_file, xml_log)
-        if not os.path.isfile(config['Global']['db_log']):
-            mi_xml = mi_xml_db(
-                xml_log,
-                db_file
-            )
-            mi_xml.filter = ["LTE_RRC_OTA_Packet", "5G_NR_RRC_OTA_Packet", "LTE_RRC_Serv_Cell_Info"]
+        if not os.path.isfile(config["Global"]["db_log"]):
+            mi_xml = mi_xml_db(xml_log, db_file)
+            mi_xml.filter = [
+                "LTE_RRC_OTA_Packet",
+                "5G_NR_RRC_OTA_Packet",
+                "LTE_RRC_Serv_Cell_Info",
+            ]
             mi_xml.parse_to_db()
             mi_xml.run_extension()
             db = mi_xml.db
         else:
             db = duckdb.connect(db_file)
-        
-        parameters_file = config['Controller']['parameters_file']
-            
-        controller = Controller(
+
+        parameters_file = config["DL_Profile_Based_Controller"]["parameters_file"]
+
+        controller = Profile_Based_Controller(
             event_params_file=parameters_file,
             db=db,
-            interface=config['Controller']['inrerface'],
-            perfect_stable=config['Controller']['perfect_stable']
+            interface=config["DL_Profile_Based_Controller"]["interface"],
+            perfect_stable=config["DL_Profile_Based_Controller"]["perfect_stable"],
+            rate_mbit=config["DL_Playback_Controller"]["rate_mbit"],
+            burst_mbit=config["DL_Playback_Controller"]["burst_mbit"],
+            latency_ms=config["DL_Playback_Controller"]["latency_ms"],
         )
-        
+
         db.close()
-        
-    if config['Replayer']['enable'] and config['Controller']['enable']:
-        controller_waiting_time = controller.config_sched_df['trigger'][0] - replayer.get_start_time()
+    elif config["DL_Playback_Controller"]["enable"]:
+        if not os.path.isfile(config["DL_Playback_Controller"]["udp_traffic_csv"]):
+            raise Exception("Please provide udp_traffic_csv")
+
+        controller = Playback_Controller(
+            udp_traffic_csv=config["DL_Playback_Controller"]["udp_traffic_csv"],
+            rate_mbit=config["DL_Playback_Controller"]["rate_mbit"],
+            burst_mbit=config["DL_Playback_Controller"]["burst_mbit"],
+            latency_ms=config["DL_Playback_Controller"]["latency_ms"],
+            interface=config["DL_Playback_Controller"]["interface"],
+        )
+
+    if config["Replayer"]["enable"] and config["DL_Profile_Based_Controller"]["enable"]:
+        controller_waiting_time = (
+            controller.config_sched_df["trigger"][0] - replayer.get_start_time()
+        )
         print(controller_waiting_time)
         if controller_waiting_time < 0:
             raise Exception("please make sure the db log and mi2log is the same source")
         controller.set_waiting_time(controller_waiting_time)
-    
+
     if replayer:
         processes.append(multiprocessing.Process(target=replayer.run))
     if controller:
         processes.append(multiprocessing.Process(target=controller.run))
-        
+
     for p in processes:
         p.start()
-    
-    
+
     # 等待所有進程完成
     for p in processes:
         p.join()

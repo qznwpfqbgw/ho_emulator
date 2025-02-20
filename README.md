@@ -25,4 +25,3 @@ $ docker-compose up -d # or docker compose up -d
 $ docker-compose exec -it ho_emulator /bin/bash # or docker compose exec -it ho_emulator /bin/bash
 # cd ho_emulator && python3 main.py
 ```
-6. 
