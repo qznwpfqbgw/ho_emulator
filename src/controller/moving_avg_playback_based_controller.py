@@ -8,31 +8,29 @@ import pandas as pd
 import time
 from controller import Controller
 
-def exponential_smoothing(data, alpha = 0.8):
-    prev = data.shift(1).fillna(10)
-    data = alpha * data + prev * (1-alpha)
-    return data
-
-
-class Playback_Controller(Controller):
-    def __init__(self, udp_traffic_csv, interface, rate_mbit=1000, burst_mbit=100, latency_ms=5, resample_interval = 0.3):
+class Moving_Average_Playback_Controller(Controller):
+    def __init__(self, udp_traffic_csv, interface, rate_mbit=1000, burst_mbit=100, latency_ms=5, resample_interval = 0.3, rolling_wnd_size = 1):
         super().__init__(interface)
         data = pd.read_csv(udp_traffic_csv)
         data['tx_time_epoch'] = pd.to_datetime(data['tx_time_epoch'], unit='s')
-        latency = data[data['lost'] != True].set_index('tx_time_epoch')['latency'].resample(f'{resample_interval}S').agg(['mean', 'std'])
+        latency = data.dropna(subset=['latency']).set_index('tx_time_epoch')['latency']
+        latency = latency.rolling(f'{rolling_wnd_size}s').mean()
+        latency = latency.resample(f'{resample_interval}S')
+        latency = pd.DataFrame({
+            "mean_latency": latency.ffill(),
+            "std_latency": latency.std()    
+        })
         lost = data.set_index('tx_time_epoch')['lost'].resample(f'{resample_interval}S').agg(['mean'])
         self.result = pd.concat([latency, lost], axis=1)
         self.result.columns = ['mean_latency', 'std_latency', 'mean_lost']
-        prev = self.result['mean_latency'].shift(1).fillna(10)
-        alpha = 0.8
-        self.result['mean_latency'] = alpha * self.result['mean_latency'] + prev * (1-alpha)
-        self.result['std_latency'] = self.result['std_latency'] * 1000 / 10
+        self.result['mean_latency'] = self.result['mean_latency'] * 1000 
+        self.result['std_latency'] = self.result['std_latency'] * 1000 
         self.result.fillna(method='ffill', inplace=True)
         
         self.waiting_time = 0
         self.interface = interface
         self.start_log_time = self.result.index[0].timestamp()
-        
+
     def set_waiting_time(self, waiting_time):
         self.waiting_time = waiting_time
         

@@ -17,12 +17,23 @@ DL_Profile_Based_Controller:
   latency_ms: 5
 
 DL_Playback_Controller:
+  enable: False
+  udp_traffic_csv: ./test/udp_dnlk_loss_latency.csv
+  interface: eth0
+  burst_mbit: 100
+  rate_mbit: 30
+  latency_ms: 5
+  resample_s: 0.3
+
+DL_Moving_Average_Playback_Controller:
   enable: True
   udp_traffic_csv: ./test/udp_dnlk_loss_latency.csv
   interface: eth0
   burst_mbit: 100
   rate_mbit: 30
   latency_ms: 5
+  resample_s: 0.3
+  rolling_wnd_size_s: 1
   
 Replayer:
   enable: False

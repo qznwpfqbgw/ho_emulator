@@ -107,11 +107,41 @@ if __name__ == "__main__":
             burst_mbit=config["DL_Playback_Controller"]["burst_mbit"],
             latency_ms=config["DL_Playback_Controller"]["latency_ms"],
             interface=config["DL_Playback_Controller"]["interface"],
+            resample_interval=config["DL_Playback_Controller"]["resample_s"]
         )
+    elif config["DL_Moving_Average_Playback_Controller"]["enable"]:
+        if not os.path.isfile(config["DL_Moving_Average_Playback_Controller"]["udp_traffic_csv"]):
+            raise Exception("Please provide udp_traffic_csv")
 
+        controller = Moving_Average_Playback_Controller(
+            udp_traffic_csv=config["DL_Moving_Average_Playback_Controller"]["udp_traffic_csv"],
+            rate_mbit=config["DL_Moving_Average_Playback_Controller"]["rate_mbit"],
+            burst_mbit=config["DL_Moving_Average_Playback_Controller"]["burst_mbit"],
+            latency_ms=config["DL_Moving_Average_Playback_Controller"]["latency_ms"],
+            interface=config["DL_Moving_Average_Playback_Controller"]["interface"],
+            resample_interval=config["DL_Moving_Average_Playback_Controller"]["resample_s"],
+            rolling_wnd_size=config["DL_Moving_Average_Playback_Controller"]["rolling_wnd_size_s"]
+        )
+        
     if config["Replayer"]["enable"] and config["DL_Profile_Based_Controller"]["enable"]:
         controller_waiting_time = (
             controller.config_sched_df["trigger"][0] - replayer.get_start_time()
+        )
+        print(controller_waiting_time)
+        if controller_waiting_time < 0:
+            raise Exception("please make sure the db log and mi2log is the same source")
+        controller.set_waiting_time(controller_waiting_time)
+    elif config["Replayer"]["enable"] and config["DL_Playback_Controller"]["enable"]:
+        controller_waiting_time = (
+            controller.start_log_time - replayer.get_start_time()
+        )
+        print(controller_waiting_time)
+        if controller_waiting_time < 0:
+            raise Exception("please make sure the db log and mi2log is the same source")
+        controller.set_waiting_time(controller_waiting_time)
+    elif config["Replayer"]["enable"] and config["DL_Moving_Average_Playback_Controller"]["enable"]:
+        controller_waiting_time = (
+            controller.start_log_time - replayer.get_start_time()
         )
         print(controller_waiting_time)
         if controller_waiting_time < 0:
