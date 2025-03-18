@@ -1,4 +1,3 @@
-# %%
 from controller import *
 from log_replayer import Log_Raw_Replayer
 from preprocessing import mi_xml_db
@@ -11,15 +10,10 @@ import multiprocessing
 import signal
 from virtual_modem import Virtual_Modem
 
-# %%
-processes: list[multiprocessing.Process] = []
-
-
 def signal_handler(signum, frame):
     for p in processes:
         if p.is_alive():
             p.terminate()
-
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
@@ -27,137 +21,119 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTSTP, signal_handler)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-c", "--config_file", default="config.yml", help="Config file (yaml)"
-    )
+    parser.add_argument("-c", "--config_file", default="config.yml", help="Config file (yaml)")
     args = parser.parse_args()
 
     with open(args.config_file, "r") as f:
         config = yaml.safe_load(f)
 
-    mi2log_file = None
-    db_file = None
-    parameters_file = None
-    xml_log = None
-    replayer = None
-    controller = None
-    if config["Global"]["mi2log"] is not None and os.path.isfile(
-        config["Global"]["mi2log"]
-    ):
-        mi2log_file = config["Global"]["mi2log"]
-    if config["Global"]["xml_log"] is not None:
-        xml_log = config["Global"]["xml_log"]
-    if config["Global"]["db_log"] is not None:
-        db_file = config["Global"]["db_log"]
+    # 初始化變數
+    mi2log_file = config["Global"].get("mi2log")
+    xml_log = config["Global"].get("xml_log")
+    db_file = config["Global"].get("db_log")
 
-    if xml_log is None and mi2log_file is None:
-        raise Exception("One of mi2log and xml_log should be provided")
+    if not (mi2log_file or xml_log):
+        raise ValueError("One of mi2log or xml_log must be provided")
 
+    processes = []
+    replayer, ul_controller, dl_controller = None, None, None
+
+    # 設置 Replayer
     if config["Replayer"]["enable"]:
         replayer = Log_Raw_Replayer(mi2log=mi2log_file, real_time=True)
         virt_modem = Virtual_Modem(config["Replayer"]["virt_serial_port"])
         replayer.add_subscriber_callback(virt_modem.replayer_callback)
-
-    if (
-        config["DL_Profile_Based_Controller"]["enable"]
-        and config["DL_Playback_Controller"]["enable"]
-    ):
-        raise Exception(
-            "Currently not support use DL_Profile_Based_Controller and DL_Playback_Controller at the same time"
+    
+    # 處理 Profile-Based 和 Playback 互斥問題
+    if config["DL_Profile_Based_Controller"]["enable"] and config["DL_Playback_Controller"]["enable"]:
+        raise ValueError("Cannot enable both DL_Profile_Based_Controller and DL_Playback_Controller")
+    
+    # 設置 DL 控制器
+    dl_controllers = {
+        "DL_Profile_Based_Controller": Profile_Based_Controller,
+        "DL_Playback_Controller": Playback_Controller,
+        "DL_Moving_Average_Playback_Controller": Moving_Average_Playback_Controller,
+    }
+    
+    for key, controller_class in dl_controllers.items():
+        if config[key]["enable"]:
+            if key == "DL_Profile_Based_Controller":
+                if not (db_file and xml_log):
+                    raise ValueError("Please provide db_log and xml_log name")
+                if not os.path.isfile(xml_log):
+                    mi2log_to_xml(mi2log_file, xml_log)
+                if not os.path.isfile(db_file):
+                    mi_xml = mi_xml_db(xml_log, db_file)
+                    mi_xml.filter = ["LTE_RRC_OTA_Packet", "5G_NR_RRC_OTA_Packet", "LTE_RRC_Serv_Cell_Info"]
+                    mi_xml.parse_to_db()
+                    mi_xml.run_extension()
+                    db = mi_xml.db
+                else:
+                    db = duckdb.connect(db_file)
+                
+                dl_controller = controller_class(
+                    event_params_file=config[key]["parameters_file"],
+                    db=db,
+                    interface=config[key]["interface"],
+                    perfect_stable=config[key]["perfect_stable"],
+                    rate_mbit=config[key]["rate_mbit"],
+                    burst_mbit=config[key]["burst_mbit"],
+                    latency_ms=config[key]["latency_ms"]
+                )
+                db.close()
+            else:
+                if not os.path.isfile(config[key]["udp_traffic_csv"]):
+                    raise ValueError("Please provide udp_traffic_csv")
+                dl_controller = controller_class(
+                    udp_traffic_csv=config[key]["udp_traffic_csv"],
+                    rate_mbit=config[key]["rate_mbit"],
+                    burst_mbit=config[key]["burst_mbit"],
+                    latency_ms=config[key]["latency_ms"],
+                    interface=config[key]["interface"],
+                    resample_interval=config[key].get("resample_s"),
+                    rolling_wnd_size=config[key].get("rolling_wnd_size_s")
+                )
+            break
+    
+    # 設置 UL 控制器
+    if config["UL_Moving_Average_Playback_Controller"]["enable"]:
+        ul_config = config["UL_Moving_Average_Playback_Controller"]
+        if not os.path.isfile(ul_config["udp_traffic_csv"]):
+            raise ValueError("Please provide udp_traffic_csv")
+        ul_controller = Moving_Average_Playback_Controller(
+            udp_traffic_csv=ul_config["udp_traffic_csv"],
+            rate_mbit=ul_config["rate_mbit"],
+            burst_mbit=ul_config["burst_mbit"],
+            latency_ms=ul_config["latency_ms"],
+            interface=ul_config["interface"],
+            resample_interval=ul_config["resample_s"],
+            rolling_wnd_size=ul_config["rolling_wnd_size_s"]
         )
-    elif config["DL_Profile_Based_Controller"]["enable"]:
-        if db_file is None or xml_log is None:
-            raise Exception("Please provide db_log and xml_log name")
 
-        if not os.path.isfile(config["Global"]["xml_log"]):
-            mi2log_to_xml(mi2log_file, xml_log)
-        if not os.path.isfile(config["Global"]["db_log"]):
-            mi_xml = mi_xml_db(xml_log, db_file)
-            mi_xml.filter = [
-                "LTE_RRC_OTA_Packet",
-                "5G_NR_RRC_OTA_Packet",
-                "LTE_RRC_Serv_Cell_Info",
-            ]
-            mi_xml.parse_to_db()
-            mi_xml.run_extension()
-            db = mi_xml.db
-        else:
-            db = duckdb.connect(db_file)
+    # 設置等待時間 (統一處理)
+    if replayer and (dl_controller or ul_controller):
+        controller_map = {"DL": dl_controller, "UL": ul_controller}
+        for name, controller in controller_map.items():
+            if controller:
+                waiting_time = controller.start_log_time - replayer.get_start_time()
+                print(f"{name}_controller_waiting_time: {waiting_time}")
+                if waiting_time < 0:
+                    raise ValueError("Ensure db log and mi2log are from the same source")
+                controller.set_waiting_time(waiting_time)
+    elif dl_controller and ul_controller:
+        if dl_controller.start_log_time < ul_controller.start_log_time:
+            ul_controller.set_waiting_time(ul_controller.start_log_time - dl_controller.start_log_time)
+            print(f"UL_controller_waiting_time: {ul_controller.start_log_time - dl_controller.start_log_time}")
+        elif dl_controller.start_log_time > ul_controller.start_log_time:
+            dl_controller.set_waiting_time(dl_controller.start_log_time - ul_controller.start_log_time)
+            print(f"DL_controller_waiting_time: {dl_controller.start_log_time - ul_controller.start_log_time}")
 
-        parameters_file = config["DL_Profile_Based_Controller"]["parameters_file"]
-
-        controller = Profile_Based_Controller(
-            event_params_file=parameters_file,
-            db=db,
-            interface=config["DL_Profile_Based_Controller"]["interface"],
-            perfect_stable=config["DL_Profile_Based_Controller"]["perfect_stable"],
-            rate_mbit=config["DL_Playback_Controller"]["rate_mbit"],
-            burst_mbit=config["DL_Playback_Controller"]["burst_mbit"],
-            latency_ms=config["DL_Playback_Controller"]["latency_ms"],
-        )
-
-        db.close()
-    elif config["DL_Playback_Controller"]["enable"]:
-        if not os.path.isfile(config["DL_Playback_Controller"]["udp_traffic_csv"]):
-            raise Exception("Please provide udp_traffic_csv")
-
-        controller = Playback_Controller(
-            udp_traffic_csv=config["DL_Playback_Controller"]["udp_traffic_csv"],
-            rate_mbit=config["DL_Playback_Controller"]["rate_mbit"],
-            burst_mbit=config["DL_Playback_Controller"]["burst_mbit"],
-            latency_ms=config["DL_Playback_Controller"]["latency_ms"],
-            interface=config["DL_Playback_Controller"]["interface"],
-            resample_interval=config["DL_Playback_Controller"]["resample_s"]
-        )
-    elif config["DL_Moving_Average_Playback_Controller"]["enable"]:
-        if not os.path.isfile(config["DL_Moving_Average_Playback_Controller"]["udp_traffic_csv"]):
-            raise Exception("Please provide udp_traffic_csv")
-
-        controller = Moving_Average_Playback_Controller(
-            udp_traffic_csv=config["DL_Moving_Average_Playback_Controller"]["udp_traffic_csv"],
-            rate_mbit=config["DL_Moving_Average_Playback_Controller"]["rate_mbit"],
-            burst_mbit=config["DL_Moving_Average_Playback_Controller"]["burst_mbit"],
-            latency_ms=config["DL_Moving_Average_Playback_Controller"]["latency_ms"],
-            interface=config["DL_Moving_Average_Playback_Controller"]["interface"],
-            resample_interval=config["DL_Moving_Average_Playback_Controller"]["resample_s"],
-            rolling_wnd_size=config["DL_Moving_Average_Playback_Controller"]["rolling_wnd_size_s"]
-        )
-        
-    if config["Replayer"]["enable"] and config["DL_Profile_Based_Controller"]["enable"]:
-        controller_waiting_time = (
-            controller.config_sched_df["trigger"][0] - replayer.get_start_time()
-        )
-        print(controller_waiting_time)
-        if controller_waiting_time < 0:
-            raise Exception("please make sure the db log and mi2log is the same source")
-        controller.set_waiting_time(controller_waiting_time)
-    elif config["Replayer"]["enable"] and config["DL_Playback_Controller"]["enable"]:
-        controller_waiting_time = (
-            controller.start_log_time - replayer.get_start_time()
-        )
-        print(controller_waiting_time)
-        if controller_waiting_time < 0:
-            raise Exception("please make sure the db log and mi2log is the same source")
-        controller.set_waiting_time(controller_waiting_time)
-    elif config["Replayer"]["enable"] and config["DL_Moving_Average_Playback_Controller"]["enable"]:
-        controller_waiting_time = (
-            controller.start_log_time - replayer.get_start_time()
-        )
-        print(controller_waiting_time)
-        if controller_waiting_time < 0:
-            raise Exception("please make sure the db log and mi2log is the same source")
-        controller.set_waiting_time(controller_waiting_time)
-
-    if replayer:
-        processes.append(multiprocessing.Process(target=replayer.run))
-    if controller:
-        processes.append(multiprocessing.Process(target=controller.run))
-
-    for p in processes:
-        p.start()
-
-    # 等待所有進程完成
+    # 啟動進程
+    for component in [replayer, dl_controller, ul_controller]:
+        if component:
+            p = multiprocessing.Process(target=component.run)
+            processes.append(p)
+            p.start()
+    
     for p in processes:
         p.join()
-
-# %%

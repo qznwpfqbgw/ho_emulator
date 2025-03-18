@@ -67,7 +67,7 @@ class Controller:
                 "parent",
                 "1:1",
                 "handle",
-                "10:"
+                "10:",
                 "netem",
                 "delay",
                 f"{latency_mean:.6f}ms",

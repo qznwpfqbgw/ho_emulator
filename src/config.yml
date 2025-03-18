@@ -10,7 +10,7 @@ Global:
 DL_Profile_Based_Controller:
   enable: False
   parameters_file: test/br_dl_test_event_params.csv
-  interface: eth0
+  interface: veth2
   perfect_stable: True
   burst_mbit: 100
   rate_mbit: 30
@@ -19,7 +19,7 @@ DL_Profile_Based_Controller:
 DL_Playback_Controller:
   enable: False
   udp_traffic_csv: ./test/udp_dnlk_loss_latency.csv
-  interface: eth0
+  interface: veth2
   burst_mbit: 100
   rate_mbit: 30
   latency_ms: 5
@@ -28,7 +28,17 @@ DL_Playback_Controller:
 DL_Moving_Average_Playback_Controller:
   enable: True
   udp_traffic_csv: ./test/udp_dnlk_loss_latency.csv
-  interface: eth0
+  interface: dl_veth
+  burst_mbit: 100
+  rate_mbit: 30
+  latency_ms: 5
+  resample_s: 0.3
+  rolling_wnd_size_s: 1
+
+UL_Moving_Average_Playback_Controller:
+  enable: True
+  udp_traffic_csv: ./test/udp_uplk_loss_latency.csv
+  interface: up_veth
   burst_mbit: 100
   rate_mbit: 30
   latency_ms: 5
@@ -37,4 +47,4 @@ DL_Moving_Average_Playback_Controller:
   
 Replayer:
   enable: False
-  virt_serial_port: /tmp/ttyV0
+  virt_serial_port: /dev/pts/7

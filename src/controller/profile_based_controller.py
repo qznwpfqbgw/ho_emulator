@@ -17,6 +17,7 @@ class Profile_Based_Controller(Controller):
         self.config_sched_df = self.calc_event_schedule(event_df)
         self.waiting_time = 0
         self.interface = interface
+        self.start_log_time = self.config_sched_df['trigger'][0]
 
     def set_waiting_time(self, waiting_time):
         self.waiting_time = waiting_time

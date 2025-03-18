@@ -10,10 +10,10 @@ from controller import Controller
 
 class Moving_Average_Playback_Controller(Controller):
     def __init__(self, udp_traffic_csv, interface, rate_mbit=1000, burst_mbit=100, latency_ms=5, resample_interval = 0.3, rolling_wnd_size = 1):
-        super().__init__(interface)
+        super().__init__(interface, rate_mbit, burst_mbit, latency_ms)
         data = pd.read_csv(udp_traffic_csv)
         data['tx_time_epoch'] = pd.to_datetime(data['tx_time_epoch'], unit='s')
-        latency = data.dropna(subset=['latency']).set_index('tx_time_epoch')['latency']
+        latency = data.dropna(subset=['latency']).set_index('tx_time_epoch')['latency'].sort_index()
         latency = latency.rolling(f'{rolling_wnd_size}s').mean()
         latency = latency.resample(f'{resample_interval}S')
         latency = pd.DataFrame({
@@ -40,11 +40,11 @@ class Moving_Average_Playback_Controller(Controller):
         for row in self.result.itertuples():
             if (row.Index.timestamp() - start_log_time + self.waiting_time) - (time.time() - start_time) > 0.05:
                 time.sleep((row.Index.timestamp() - start_log_time + self.waiting_time) - (time.time() - start_time))
-            self.run_netem_cmd(row.mean_lost, row.mean_latency, row.std_latency, 'normal', self.interface)
+            self.run_netem_cmd(row.mean_lost*100, row.mean_latency, row.std_latency, 'normal', self.interface)
             print(f"Index: {row.Index.timestamp()}, Mean Latency: {row.mean_latency}, STD Latency: {row.std_latency}, Lost Ratio: {row.mean_lost}")
 
 if __name__ == '__main__':
-    controller = Playback_Controller(
+    controller = Moving_Average_Playback_Controller(
         '/home/fourcolor/Documents/ho_emulator/src/test/udp_dnlk_loss_latency.csv',
         'lo'
     )
