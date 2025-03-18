@@ -46,5 +46,5 @@ UL_Moving_Average_Playback_Controller:
   rolling_wnd_size_s: 1
   
 Replayer:
-  enable: False
-  virt_serial_port: /dev/pts/7
+  enable: True
+  virt_serial_port: /dev/ttyV0

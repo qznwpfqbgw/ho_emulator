@@ -26,8 +26,8 @@ fi
 start_sessions() {
     for ((i=0; i<NUM_PAIRS; i++)); do
         SESSION_NAME="${SESSION_PREFIX}_$i"
-        PORT1="/tmp/ttyV$((i))"
-        PORT2="/tmp/ttyV$((NUM_PAIRS+i))"
+        PORT1="/dev/ttyV$((i))"
+        PORT2="/dev/ttyV$((NUM_PAIRS+i))"
 
         if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
             echo "Warning: tmux session '$SESSION_NAME' already exists. Skipping..."

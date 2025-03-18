@@ -111,22 +111,19 @@ if __name__ == "__main__":
         )
 
     # 設置等待時間 (統一處理)
-    if replayer and (dl_controller or ul_controller):
-        controller_map = {"DL": dl_controller, "UL": ul_controller}
-        for name, controller in controller_map.items():
-            if controller:
-                waiting_time = controller.start_log_time - replayer.get_start_time()
-                print(f"{name}_controller_waiting_time: {waiting_time}")
-                if waiting_time < 0:
-                    raise ValueError("Ensure db log and mi2log are from the same source")
-                controller.set_waiting_time(waiting_time)
-    elif dl_controller and ul_controller:
-        if dl_controller.start_log_time < ul_controller.start_log_time:
-            ul_controller.set_waiting_time(ul_controller.start_log_time - dl_controller.start_log_time)
-            print(f"UL_controller_waiting_time: {ul_controller.start_log_time - dl_controller.start_log_time}")
-        elif dl_controller.start_log_time > ul_controller.start_log_time:
-            dl_controller.set_waiting_time(dl_controller.start_log_time - ul_controller.start_log_time)
-            print(f"DL_controller_waiting_time: {dl_controller.start_log_time - ul_controller.start_log_time}")
+    
+    min_start_time = min(filter(None, [
+        replayer.get_start_time() if replayer else None,
+        dl_controller.get_start_time() if dl_controller else None,
+        ul_controller.get_start_time() if ul_controller else None
+    ]))
+    for k, component in {"Replayer": replayer, "DL": dl_controller, "UL": ul_controller}.items():
+        if component:
+            waiting_time = component.get_start_time() - min_start_time
+            print(f"{k} waiting time: {waiting_time}")
+            if waiting_time < 0:
+                raise ValueError("Ensure db log and mi2log are from the same source")
+            component.set_waiting_time(waiting_time)
 
     # 啟動進程
     for component in [replayer, dl_controller, ul_controller]:
