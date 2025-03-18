@@ -55,6 +55,10 @@ class Controller:
         if stderr:
             print(stderr)
             
+        self.start_log_time = None
+    
+    def get_start_time(self):
+        return self.start_log_time
             
     def run_netem_cmd(self, packet_loss, latency_mean, latency_std, distribution, interface):
         if latency_std == 0:
