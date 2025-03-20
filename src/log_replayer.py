@@ -87,8 +87,8 @@ class Log_Raw_Replayer:
                                 # raw_data_to_send = b''
                                 continue
                             if (cur_log_time - start_log_time + self.waiting_time - self.offset_time) - (time.time() - start_send_real_time) > 0:
-                                # print("sleep:", (cur_log_time - start_log_time) - (time.time() - start_send_real_time), flush=True)
-                                time.sleep((cur_log_time - start_log_time) - (time.time() - start_send_real_time))
+                                # print("sleep:", (cur_log_time - start_log_time + self.waiting_time - self.offset_time) - (time.time() - start_send_real_time), flush=True)
+                                time.sleep((cur_log_time - start_log_time + self.waiting_time - self.offset_time) - (time.time() - start_send_real_time))
                         # print(time.time() -  start_send_real_time, cur_log_time - start_log_time)
                         for callback in self.subscriber_callbacks:
                             packet = DMLogPacket(decoded)
