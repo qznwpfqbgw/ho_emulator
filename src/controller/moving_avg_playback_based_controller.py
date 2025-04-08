@@ -27,27 +27,54 @@ class Moving_Average_Playback_Controller(Controller):
         self.result = pd.concat([latency_final, lost], axis=1)
         self.result.columns = ['mean_latency', 'std_latency', 'mean_lost']
         self.result['mean_latency'] = self.result['mean_latency'] * 1000 
-        self.result['std_latency'] = self.result['std_latency'] * 1000 
+        self.result['std_latency'] = self.result['std_latency'] * 1000 / 500
         self.result.fillna(method='ffill', inplace=True)
-        
         self.waiting_time = 0
         self.interface = interface
         self.resample_interval = resample_interval
         self.start_log_time = self.result.index[0].timestamp()
+        self.start_index = 0  # 新增屬性來儲存起始索引
+        self.offset_time = 0
+        self.update_start_index()
+        # self.result.to_csv(f"tmp_{self.interface}.csv")
 
     def set_waiting_time(self, waiting_time):
         self.waiting_time = waiting_time
         
+    def set_offset_time(self, offset_time):
+        self.offset_time = offset_time
+        self.update_start_index()
+        
+    def update_start_index(self):
+        target_time = self.start_log_time + self.offset_time
+        target_timestamp = pd.Timestamp(target_time, unit='s')
+        nearest_index = self.result.index.get_indexer([target_timestamp], method='nearest')[0]
+        self.start_index = nearest_index
+
     def run(self):
         start_time = time.time()
         start_log_time = self.result.index[0].timestamp()
-        for row in self.result.itertuples():
-            if (row.Index.timestamp() - start_log_time + self.waiting_time) - (time.time() - start_time) < self.resample_interval:
+        for index, row in self.result.iloc[self.start_index:].iterrows():
+            current_time = time.time()
+            time_diff = (index.timestamp() - start_log_time + self.waiting_time - self.offset_time) - (current_time - start_time)
+            # print(f"Time difference: {time_diff:.6f} seconds")
+
+            if time_diff < -self.resample_interval:
+                # print("Skipping", time_diff, self.interface)
+                time.sleep(0.01)  # 增加一些延遲
                 continue
-            if (row.Index.timestamp() - start_log_time + self.waiting_time) - (time.time() - start_time) > 0:
-                time.sleep((row.Index.timestamp() - start_log_time + self.waiting_time) - (time.time() - start_time))
-            self.run_netem_cmd(row.mean_lost*100, row.mean_latency, row.std_latency, 'normal', self.interface)
-            print(f"Index: {row.Index.timestamp()}, Mean Latency: {row.mean_latency}, STD Latency: {row.std_latency}, Lost Ratio: {row.mean_lost}")
+            if time_diff > 0.05:
+                # print("Sleeping", time_diff, self.interface)
+                time.sleep(time_diff)
+
+            # print(f"{self.interface} before exec: ", current_time)
+            exec_start_time = time.time()
+            self.run_netem_cmd(row['mean_lost'] * 100, row['mean_latency'], row['std_latency'], 'normal', self.interface)
+            exec_end_time = time.time()
+            exec_time = exec_end_time - exec_start_time
+            # print(f"{self.interface} after exec: ", time.time())
+            print(f"run_netem_cmd execution time: {exec_time:.6f} seconds")
+            print(f"Index: {index.timestamp()}, Mean Latency: {row['mean_latency']}, STD Latency: {row['std_latency']}, Lost Ratio: {row['mean_lost']}")
 
 if __name__ == '__main__':
     controller = Moving_Average_Playback_Controller(

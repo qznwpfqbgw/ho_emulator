@@ -1,0 +1,30 @@
+Global:
+  offset_time: 1718670230.0
+  duration: 60
+
+Replayers: 
+  - type: Multi_Band_Log_Raw_Replayer # modem1
+    enable: True
+    modem_type: Virtual_Modem
+    virt_serial_ports: /dev/ttyV2
+    merged_mi2log: ./test/multi_band/sm01.db
+
+Controllers:
+  - type: Moving_Average_Playback_Controller # modem1 dl
+    enable: True
+    interface: dl_veth1
+    burst_mbit: 100
+    rate_mbit: 30
+    latency_ms: 5
+    resample_s: 0.3
+    rolling_wnd_size_s: 1
+    traffic: ./test/multi_band/sm01/udp_dnlk_loss_latency.csv
+  - type: Moving_Average_Playback_Controller # modem1 ul
+    enable: True
+    interface: ul_veth1
+    burst_mbit: 100
+    rate_mbit: 30
+    latency_ms: 5
+    resample_s: 0.3
+    rolling_wnd_size_s: 1
+    traffic: ./test/multi_band/sm01/udp_uplk_loss_latency.csv

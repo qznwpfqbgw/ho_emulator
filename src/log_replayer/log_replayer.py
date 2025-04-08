@@ -2,20 +2,27 @@ from mobile_insight.monitor.dm_collector import dm_collector_c, DMLogPacket, For
 import time
 import sys
 import traceback
+from utils.band_conversion import *
 class Log_Raw_Replayer:
-    def __init__(self, mi2log, real_time, offset_time = 0) -> None:
+    def __init__(self, mi2log, real_time, offset_time = 0, band = 'b1_b3_b7_b8') -> None:
         self.log_file_path = mi2log
         self.real_time = real_time
         DMLogPacket.init({})
         self.subscriber_callbacks = []
         self.waiting_time = 0
         self.offset_time = offset_time
+        self.band = band
+        if self.band is not None:
+            self.band = band_str_to_int(self.band)
         
     def add_subscriber_callback(self, callback):
         self.subscriber_callbacks.append(callback)
         
     def set_waiting_time(self, waiting_time):
         self.waiting_time = waiting_time
+        
+    def set_offset_time(self, offset_time):
+        self.offset_time = offset_time
         
     def get_start_time(self):
         self._input_file = open(self.log_file_path, "rb")
@@ -90,9 +97,11 @@ class Log_Raw_Replayer:
                                 # print("sleep:", (cur_log_time - start_log_time + self.waiting_time - self.offset_time) - (time.time() - start_send_real_time), flush=True)
                                 time.sleep((cur_log_time - start_log_time + self.waiting_time - self.offset_time) - (time.time() - start_send_real_time))
                         # print(time.time() -  start_send_real_time, cur_log_time - start_log_time)
+                        # start = time.time()
                         for callback in self.subscriber_callbacks:
                             packet = DMLogPacket(decoded)
-                            callback((raw_data_to_send, packet))
+                            callback((raw_data_to_send, packet, self.band))
+                        # print("callback time:", time.time() - start)
                         # print(next((t for t in decoded if t[0] == "type_id"), None)[1],len(raw_data_to_send))
                         raw_data_to_send = b''
                     except FormatError as e:
@@ -105,7 +114,7 @@ class Log_Raw_Replayer:
 if __name__ == "__main__":
     replayer = Log_Raw_Replayer(
         'test/diag_log_sm00_2024-10-11_16-13-35.mi2log',
-        True,
+        False,
         0
     )
     import serial

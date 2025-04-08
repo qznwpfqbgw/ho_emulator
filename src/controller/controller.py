@@ -55,6 +55,32 @@ class Controller:
         if stderr:
             print(stderr)
             
+        proc = subprocess.Popen(
+            [
+                "tc",
+                "qdisc",
+                "add",
+                "dev",
+                interface,
+                "parent",
+                "10:1",
+                "handle",
+                "20:",
+                "netem",
+                "delay",
+                "0ms",
+                "loss",
+                "0%",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr = proc.communicate()
+        if stdout:
+            print(stdout)
+        if stderr:
+            print(stderr)
+            
         self.start_log_time = None
     
     def get_start_time(self):

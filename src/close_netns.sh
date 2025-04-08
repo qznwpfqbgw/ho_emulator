@@ -7,7 +7,9 @@ sudo ip netns del Client 2>/dev/null || echo "Client 已刪除"
 sudo ip netns del NETEM 2>/dev/null || echo "R 已刪除"
 sudo ip netns del Server 2>/dev/null || echo "S2 已刪除"
 
-sudo ip link del dl_veth 2>/dev/null || echo "dl_veth 已刪除"
-sudo ip link del up_veth 2>/dev/null || echo "up_veth 已刪除"
+sudo ip link del dl_veth1 2>/dev/null || echo "dl_veth 已刪除"
+sudo ip link del dl_veth2 2>/dev/null || echo "dl_veth 已刪除"
+sudo ip link del up_veth1 2>/dev/null || echo "up_veth 已刪除"
+sudo ip link del up_veth2 2>/dev/null || echo "up_veth 已刪除"
 
 echo "✅ Network Namespace 已關閉！"

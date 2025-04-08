@@ -1,0 +1,101 @@
+Global:
+  offset_time: 1718670230.0
+  duration: 60
+
+Controllers:
+  - type: Multi_Band_Moving_Average_Playback_Controller # modem 2 dl
+    enable: True
+    interface: dl_veth2
+    burst_mbit: 100
+    rate_mbit: 30
+    latency_ms: 5
+    resample_s: 0.3
+    rolling_wnd_size_s: 1
+    shm_file: "/dev/shm/band_setting2"
+    band_candidates:
+    - band: b1_b3
+      traffic: ./test/multi_band/sm02/udp_dnlk_loss_latency.csv
+    - band: b1_b7
+      traffic: ./test/multi_band/sm03/udp_dnlk_loss_latency.csv
+    - band: b1_b8
+      traffic: ./test/multi_band/sm04/udp_dnlk_loss_latency.csv
+    - band: b3_b7
+      traffic: ./test/multi_band/sm05/udp_dnlk_loss_latency.csv
+    - band: b3_b8
+      traffic: ./test/multi_band/sm06/udp_dnlk_loss_latency.csv
+    - band: b7_b8
+      traffic: ./test/multi_band/sm07/udp_dnlk_loss_latency.csv
+  - type: Multi_Band_Moving_Average_Playback_Controller # modem 2 ul
+    enable: True
+    interface: ul_veth2
+    burst_mbit: 100
+    rate_mbit: 30
+    latency_ms: 5
+    resample_s: 0.3
+    rolling_wnd_size_s: 1
+    shm_file: "/dev/shm/band_setting2"
+    band_candidates:
+    - band: b1_b3
+      traffic: ./test/multi_band/sm02/udp_uplk_loss_latency.csv
+    - band: b1_b7
+      traffic: ./test/multi_band/sm03/udp_uplk_loss_latency.csv
+    - band: b1_b8
+      traffic: ./test/multi_band/sm04/udp_uplk_loss_latency.csv
+    - band: b3_b7
+      traffic: ./test/multi_band/sm05/udp_uplk_loss_latency.csv
+    - band: b3_b8
+      traffic: ./test/multi_band/sm06/udp_uplk_loss_latency.csv
+    - band: b7_b8
+      traffic: ./test/multi_band/sm07/udp_uplk_loss_latency.csv
+  - type: Moving_Average_Playback_Controller # modem1 dl
+    enable: True
+    interface: dl_veth1
+    burst_mbit: 100
+    rate_mbit: 30
+    latency_ms: 5
+    resample_s: 0.3
+    rolling_wnd_size_s: 1
+    traffic: ./test/multi_band/sm01/udp_dnlk_loss_latency.csv
+  - type: Moving_Average_Playback_Controller # modem1 ul
+    enable: True
+    interface: ul_veth1
+    burst_mbit: 100
+    rate_mbit: 30
+    latency_ms: 5
+    resample_s: 0.3
+    rolling_wnd_size_s: 1
+    traffic: ./test/multi_band/sm01/udp_uplk_loss_latency.csv
+    
+Replayers: 
+  - type: Multi_Band_Log_Raw_Replayer # modem1
+    enable: True
+    modem_type: Virtual_Modem
+    virt_serial_ports: /dev/ttyV2
+    shm_file: "/dev/shm/band_setting1"
+    merged_mi2log: ./test/multi_band/sm01.db
+    mi2log: ""
+    band_candidates:
+    - band: b1_b3_b7_b8
+      mi2log: ./test/multi_band/sm01/diag_log_sm01_2024-06-18_15-53-03.mi2log
+
+  - type: Multi_Band_Log_Raw_Replayer # modem2 - dbl
+    enable: True
+    modem_type: Virtual_Multi_Band_Modem
+    virt_serial_ports: /dev/ttyV3
+    shm_file: "/dev/shm/band_setting2"
+    merged_mi2log: ./test/multi_band/sm02_to_sm07.db
+    band_candidates:
+    - band: b1_b3
+      mi2log: ./test/multi_band/sm02/diag_log_sm02_2024-06-18_15-53-03.mi2log
+    - band: b1_b7
+      mi2log: ./test/multi_band/sm03/diag_log_sm03_2024-06-18_15-53-03.mi2log
+    - band: b1_b8
+      mi2log: ./test/multi_band/sm04/diag_log_sm04_2024-06-18_15-53-03.mi2log
+    - band: b3_b7
+      mi2log: ./test/multi_band/sm05/diag_log_sm05_2024-06-18_15-53-03.mi2log
+    - band: b3_b8
+      mi2log: ./test/multi_band/sm06/diag_log_sm06_2024-06-18_15-53-03.mi2log
+    - band: b7_b8
+      mi2log: ./test/multi_band/sm07/diag_log_sm07_2024-06-18_15-53-03.mi2log
+
+  
