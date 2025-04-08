@@ -13,7 +13,7 @@ def signal_handler(signum, frame):
     global processes
     time.sleep(1)
     for p in processes:
-        if p._popen:
+        if p.is_alive():
             p.terminate()
 
 if __name__ == "__main__":
